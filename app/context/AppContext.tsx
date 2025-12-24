@@ -33,29 +33,27 @@ interface AppProviderProps {
 }
 
 export function AppProvider({ children, initialConfig }: AppProviderProps) {
-  const [config, setConfig] = React.useState<AppConfig>(() => {
-    if (typeof window === 'undefined') {
-      return initialConfig || DEFAULT_CONFIG
-    }
+  // Always start with the same default config on both server and client
+  const [config, setConfig] = React.useState<AppConfig>(initialConfig || DEFAULT_CONFIG)
 
+  // Load from localStorage after mount to avoid hydration mismatch
+  React.useEffect(() => {
     const saved = localStorage.getItem('my-nav-config')
     if (saved) {
       // Safety check: if saved data is too large, don't even try to parse it
       if (saved.length > 5000000) {
         console.warn('Saved config is too large, clearing it.')
         localStorage.removeItem('my-nav-config')
-        return initialConfig || DEFAULT_CONFIG
+        return
       }
       try {
         const parsed = JSON.parse(saved)
-        return { ...DEFAULT_CONFIG, ...parsed }
+        setConfig(prev => ({ ...prev, ...parsed }))
       } catch {
         localStorage.removeItem('my-nav-config')
-        return initialConfig || DEFAULT_CONFIG
       }
     }
-    return initialConfig || DEFAULT_CONFIG
-  })
+  }, [])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -218,7 +216,7 @@ export function AppProvider({ children, initialConfig }: AppProviderProps) {
     })
   }
 
-  const moveGroup = (groupId: string, newIndex: number) => {
+  const moveGroup = (groupId: string, newIndex: number | 'up' | 'down') => {
     setConfig(prev => {
       const groupIndex = prev.groups.findIndex(g => g.id === groupId)
       if (groupIndex === -1) return prev
@@ -226,10 +224,27 @@ export function AppProvider({ children, initialConfig }: AppProviderProps) {
       const newGroups = [...prev.groups]
       const [movedGroup] = newGroups.splice(groupIndex, 1)
 
-      const clampedIndex = Math.max(0, Math.min(newIndex, newGroups.length))
+      let targetIndex: number
+
+      if (newIndex === 'up') {
+        targetIndex = Math.max(0, groupIndex - 1)
+      } else if (newIndex === 'down') {
+        targetIndex = Math.min(newGroups.length, groupIndex + 1)
+      } else {
+        targetIndex = newIndex as number
+      }
+
+      const clampedIndex = Math.max(0, Math.min(targetIndex, newGroups.length))
       newGroups.splice(clampedIndex, 0, movedGroup)
 
-      return { ...prev, groups: newGroups }
+      // 更新所有分组的 order 字段
+      const updatedGroups = newGroups.map((group, index) => ({
+        ...group,
+        order: index,
+        updatedAt: group.id === groupId ? new Date().toISOString() : group.updatedAt,
+      }))
+
+      return { ...prev, groups: updatedGroups }
     })
   }
 

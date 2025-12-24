@@ -58,7 +58,7 @@ export interface AppContextType {
   updateGroup: (groupId: string, name: string) => void;
   deleteGroup: (groupId: string) => void;
   moveBookmark: (fromGroupId: string, toGroupId: string, bookmarkId: string, newIndex?: number) => void;
-  moveGroup: (groupId: string, newIndex: number) => void;
+  moveGroup: (groupId: string, newIndex: number | 'up' | 'down') => void;
   importConfig: (config: AppConfig) => void;
   exportConfig: () => AppConfig;
   resetToDefault: () => void;

@@ -26,13 +26,27 @@ export function BookmarkItem({
   onDragEnd,
 }: BookmarkItemProps) {
   const [showMenu, setShowMenu] = useState(false)
+  const [menuPosition, setMenuPosition] = useState({ left: 0, top: 0 })
   const itemRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
   const isLongPress = useRef(false)
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (itemRef.current && !itemRef.current.contains(event.target as Node)) {
+      // 如果菜单未显示，不处理
+      if (!showMenu) return
+
+      // 如果点击的是右键，不处理（由 contextmenu 事件处理）
+      if (event.button === 2) return
+
+      // 检查点击是否在菜单内或在卡片内
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node) &&
+        itemRef.current &&
+        !itemRef.current.contains(event.target as Node)
+      ) {
         setShowMenu(false)
       }
     }
@@ -48,18 +62,62 @@ export function BookmarkItem({
       document.removeEventListener('mousedown', handleClickOutside)
       window.removeEventListener('resize', handleResize)
     }
-  }, [])
+  }, [showMenu])
+
+  // 鼠标离开菜单自动消失
+  useEffect(() => {
+    if (!showMenu) return
+
+    const checkMouseLeave = () => {
+      if (menuRef.current && !menuRef.current.matches(':hover') && !itemRef.current?.matches(':hover')) {
+        setShowMenu(false)
+      }
+    }
+
+    // 每100ms检查一次鼠标位置
+    const interval = setInterval(checkMouseLeave, 100)
+
+    return () => clearInterval(interval)
+  }, [showMenu])
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
-    setShowMenu(true)
 
-    // Position menu appropriately
-    const menu = document.getElementById(`menu-${bookmark.id}`)
-    if (menu && itemRef.current) {
-      menu.style.left = `${e.clientX}px`
-      menu.style.top = `${e.clientY}px`
+    // Position menu at cursor position with boundary detection
+    const menuWidth = 192
+    const menuHeight = 120
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+
+    let left = e.clientX
+    let top = e.clientY
+
+    // 边界检测：如果右侧空间不足，向左偏移
+    if (left + menuWidth > viewportWidth) {
+      left = viewportWidth - menuWidth - 10
     }
+
+    // 边界检测：如果下方空间不足，向上偏移
+    if (top + menuHeight > viewportHeight) {
+      top = viewportHeight - menuHeight - 10
+    }
+
+    // 边界检测：确保不会超出左边界
+    if (left < 0) {
+      left = 10
+    }
+
+    // 边界检测：确保不会超出上边界
+    if (top < 0) {
+      top = 10
+    }
+
+    setMenuPosition({
+      left,
+      top
+    })
+
+    setShowMenu(true)
   }
 
   const handleTouchStart = () => {
@@ -70,14 +128,35 @@ export function BookmarkItem({
       isLongPress.current = true
       setShowMenu(true)
 
-      // Position menu near the bookmark
+      // Position menu near the bookmark with boundary detection
       if (itemRef.current) {
         const rect = itemRef.current.getBoundingClientRect()
-        const menu = document.getElementById(`menu-${bookmark.id}`)
-        if (menu) {
-          menu.style.left = `${rect.left + rect.width / 2}px`
-          menu.style.top = `${rect.bottom}px`
+        const menuWidth = 192
+        const menuHeight = 120
+        const viewportWidth = window.innerWidth
+        const viewportHeight = window.innerHeight
+
+        let left = rect.left + rect.width / 2 - menuWidth / 2
+        let top = rect.bottom
+
+        // 边界检测
+        if (left + menuWidth > viewportWidth) {
+          left = viewportWidth - menuWidth - 10
         }
+        if (left < 0) {
+          left = 10
+        }
+        if (top + menuHeight > viewportHeight) {
+          top = rect.top - menuHeight - 4
+        }
+        if (top < 0) {
+          top = 10
+        }
+
+        setMenuPosition({
+          left,
+          top
+        })
       }
     }, 500)
   }
@@ -95,6 +174,47 @@ export function BookmarkItem({
   const handleClick = () => {
     if (onOpen) onOpen()
     window.open(bookmark.url, '_blank')
+  }
+
+  const handleMenuButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    const button = e.currentTarget
+    const rect = button.getBoundingClientRect()
+    const menuWidth = 192
+    const menuHeight = 120
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+
+    // 计算理想的菜单位置（按钮正下方）
+    let left = rect.left
+    let top = rect.bottom + 4 // 4px 间距
+
+    // 边界检测：如果右侧空间不足，将菜单向左偏移
+    if (rect.left + menuWidth > viewportWidth) {
+      left = rect.right - menuWidth
+    }
+
+    // 边界检测：如果下方空间不足，将菜单显示在按钮上方
+    if (top + menuHeight > viewportHeight) {
+      top = rect.top - menuHeight - 4
+    }
+
+    // 边界检测：确保不会超出左边界
+    if (left < 0) {
+      left = 10
+    }
+
+    // 边界检测：确保不会超出上边界
+    if (top < 0) {
+      top = 10
+    }
+
+    setMenuPosition({
+      left,
+      top
+    })
+
+    setShowMenu(!showMenu)
   }
 
   const highlightText = (text: string, query: string): React.ReactNode => {
@@ -115,7 +235,7 @@ export function BookmarkItem({
   }
 
   const escapeRegExp = (string: string): string => {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')
   }
 
   const faviconUrl = bookmark.icon || getFaviconUrl(bookmark.url)
@@ -172,10 +292,7 @@ export function BookmarkItem({
             </div>
             <button
               className="glass-button p-2 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation()
-                setShowMenu(!showMenu)
-              }}
+              onClick={handleMenuButtonClick}
             >
               <Menu className="h-4 w-4" />
             </button>
@@ -185,12 +302,16 @@ export function BookmarkItem({
 
       {showMenu && createPortal(
         <div
-          id={`menu-${bookmark.id}`}
-          className="fixed z-50 glass-card shadow-2xl w-48"
+          ref={menuRef}
+          className="fixed z-50 glass-card shadow-2xl w-48 rounded-xl overflow-hidden"
+          style={{
+            left: menuPosition.left,
+            top: menuPosition.top,
+          }}
         >
-          <div className="py-2">
+          <div className="py-1">
             <button
-              className="context-menu-item flex items-center gap-3"
+              className="context-menu-item flex items-center gap-3 w-full text-left"
               onClick={() => {
                 onEdit()
                 setShowMenu(false)
@@ -199,8 +320,9 @@ export function BookmarkItem({
               <Edit2 className="h-4 w-4" />
               编辑
             </button>
+            <div className="h-px bg-border my-1"></div>
             <button
-              className="context-menu-item flex items-center gap-3 text-destructive"
+              className="context-menu-item flex items-center gap-3 text-destructive w-full text-left"
               onClick={() => {
                 onDelete()
                 setShowMenu(false)

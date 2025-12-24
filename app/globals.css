@@ -80,7 +80,15 @@
   }
 
   .context-menu-item {
-    @apply px-4 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors;
+    @apply px-4 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-3;
+  }
+
+  .context-menu-item:focus {
+    @apply outline-none ring-2 ring-primary/50;
+  }
+
+  .context-menu-item:active {
+    @apply bg-accent/80;
   }
 
   .search-highlight {
