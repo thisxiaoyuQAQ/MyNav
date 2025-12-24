@@ -1,21 +1,20 @@
 'use client'
 
-import React, { useState, useRef, useCallback } from 'react'
-import { AppConfig } from '@/types'
+import React, { useState, useRef } from 'react'
 import { useAppContext } from '@/app/context/AppContext'
 import { rgbToHex, hexToRgb, validateRgbColor } from '@/lib/theme'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Upload, Palette, ImageIcon, Globe, RotateCcw } from 'lucide-react'
 
-interface SettingsPanelProps {
-  onClose?: () => void
-}
+// Section component - 定义在模块顶层，避免每次渲染都重新创建
+const Section = ({ children }: { children: React.ReactNode }) => (
+  <div className="mb-8 last:mb-0">{children}</div>
+)
 
-export function SettingsPanel({ onClose }: SettingsPanelProps) {
+export function SettingsPanel() {
   const { config, updateConfig, resetToDefault } = useAppContext()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -26,16 +25,16 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const [heroDescription, setHeroDescription] = useState(config.heroDescription)
   const [backgroundImageUrl, setBackgroundImageUrl] = useState('')
 
-  // Confirm dialog state
-  const [confirmOpen, setConfirmOpen] = useState(false)
-
   // Theme color state
   const [themeColorHex, setThemeColorHex] = useState(
     config.themeColor ? rgbToHex(config.themeColor) : '#3b82f6'
   )
 
+  // Note: We intentionally don't sync local state with config changes here
+  // to avoid re-renders during typing. Local state is only initialized once.
+
   // Handle basic settings save
-  const handleSaveBasicSettings = useCallback(() => {
+  const handleSaveBasicSettings = () => {
     updateConfig({
       ...config,
       pageTitle,
@@ -43,65 +42,59 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
       heroTitle,
       heroDescription,
     })
-  }, [config, pageTitle, pageDescription, heroTitle, heroDescription, updateConfig])
+  }
 
   // Handle theme color change
-  const handleThemeColorChange = useCallback(
-    (color: string) => {
-      setThemeColorHex(color)
-      const rgb = hexToRgb(color)
-      if (rgb && validateRgbColor(rgb)) {
-        updateConfig({
-          ...config,
-          themeColor: rgb,
-        })
-      }
-    },
-    [config, updateConfig]
-  )
+  const handleThemeColorChange = (color: string) => {
+    setThemeColorHex(color)
+    const rgb = hexToRgb(color)
+    if (rgb && validateRgbColor(rgb)) {
+      updateConfig({
+        ...config,
+        themeColor: rgb,
+      })
+    }
+  }
 
   // Handle theme color reset
-  const handleResetThemeColor = useCallback(() => {
+  const handleResetThemeColor = () => {
     setThemeColorHex('#3b82f6')
     updateConfig({
       ...config,
       themeColor: undefined,
     })
-  }, [config, updateConfig])
+  }
 
   // Handle background image upload
-  const handleImageUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (file) {
-        if (file.size > 5 * 1024 * 1024) {
-          alert('图片文件大小不能超过5MB')
-          return
-        }
-
-        if (!file.type.startsWith('image/')) {
-          alert('请选择图片文件')
-          return
-        }
-
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          const result = event.target?.result as string
-          if (result) {
-            updateConfig({
-              ...config,
-              backgroundImage: result,
-            })
-          }
-        }
-        reader.readAsDataURL(file)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('图片文件大小不能超过5MB')
+        return
       }
-    },
-    [config, updateConfig]
-  )
+
+      if (!file.type.startsWith('image/')) {
+        alert('请选择图片文件')
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const result = event.target?.result as string
+        if (result) {
+          updateConfig({
+            ...config,
+            backgroundImage: result,
+          })
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   // Handle background image URL
-  const handleSetBackgroundImageUrl = useCallback(() => {
+  const handleSetBackgroundImageUrl = () => {
     if (!backgroundImageUrl.trim()) {
       alert('请输入有效的图片URL')
       return
@@ -116,48 +109,23 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
       ...config,
       backgroundImage: backgroundImageUrl,
     })
-  }, [config, backgroundImageUrl, updateConfig])
+  }
 
   // Handle remove background image
-  const handleRemoveBackgroundImage = useCallback(() => {
+  const handleRemoveBackgroundImage = () => {
     updateConfig({
       ...config,
       backgroundImage: undefined,
     })
     setBackgroundImageUrl('')
-  }, [config, updateConfig])
+  }
 
   // Handle reset to default
-  const handleResetToDefault = useCallback(() => {
-    setConfirmOpen(false)
+  const handleResetToDefault = () => {
     resetToDefault()
-  }, [resetToDefault])
-
-  const openConfirmDialog = useCallback(() => {
-    setConfirmOpen(true)
-  }, [])
-
-  const closeConfirmDialog = useCallback(() => {
-    setConfirmOpen(false)
-  }, [])
-
-  // Section component
-  const Section = ({ children }: { children: React.ReactNode }) => (
-    <div className="mb-8 last:mb-0">{children}</div>
-  )
+  }
 
   return (
-    <>
-      <ConfirmDialog
-        open={confirmOpen}
-        onClose={closeConfirmDialog}
-        onConfirm={handleResetToDefault}
-        title="恢复默认设置"
-        message="此操作将清除所有配置并恢复到初始状态，包括所有书签、分组和自定义设置。此操作不可撤销，确定要继续吗？"
-        confirmText="确认恢复"
-        cancelText="取消"
-      />
-
     <div className="space-y-6 max-w-2xl mx-auto">
       <Section>
         <Card>
@@ -377,7 +345,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                 此操作将清除所有配置，包括书签、分组、自定义主题、背景图片等，恢复到初始的默认状态。此操作不可撤销，请谨慎操作。
               </p>
               <div className="pt-2 flex justify-end">
-                <Button variant="destructive" onClick={openConfirmDialog}>
+                <Button variant="destructive" onClick={handleResetToDefault}>
                   <RotateCcw className="h-4 w-4 mr-2" />
                   恢复默认设置
                 </Button>
@@ -387,6 +355,5 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
         </Card>
       </Section>
     </div>
-    </>
   )
 }

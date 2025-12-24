@@ -294,7 +294,7 @@ export default function Home() {
           {/* Settings Panel */}
           <div>
             <h3 className="text-lg font-medium mb-3">自定义设置</h3>
-            <SettingsPanel onClose={() => setShowSettings(false)} />
+            <SettingsPanel />
           </div>
 
           {/* Import/Export */}

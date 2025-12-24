@@ -23,31 +23,49 @@ export function Modal({
   size = 'md',
   hideClose = false,
 }: ModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null)
+  const backdropRef = useRef<HTMLDivElement>(null)
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'auto'
+    }
+    return () => {
+      document.body.style.overflow = 'auto'
+    }
+  }, [open])
+
+  // Handle Escape key
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape' && open) {
+        e.stopPropagation()
         onClose()
       }
     }
 
     if (open) {
       document.addEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'auto'
     }
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = 'auto'
     }
   }, [open, onClose])
 
+  // Handle click outside - only close if clicking on the backdrop
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (modalRef.current && e.target === modalRef.current) {
+      // Check if the click target is the backdrop itself (not any children)
+      // Also ensure we're not currently focused on an input element
+      if (backdropRef.current && e.target === backdropRef.current) {
+        // Additional safety check: don't close if user is actively typing
+        const activeElement = document.activeElement
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+          return
+        }
         onClose()
       }
     }
@@ -65,7 +83,7 @@ export function Modal({
 
   return createPortal(
     <div
-      ref={modalRef}
+      ref={backdropRef}
       className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
     >
       <div
