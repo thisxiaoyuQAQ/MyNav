@@ -363,7 +363,7 @@ export default function Home() {
       <Modal
         open={showBookmarkManager}
         onClose={() => setShowBookmarkManager(false)}
-        title="管理书签顺序"
+        title="管理分组和书签"
       >
         <BookmarkManager
           groups={config.groups}
@@ -373,6 +373,9 @@ export default function Home() {
             setShowBookmarkManager(false)
           }}
           onDeleteBookmark={deleteBookmark}
+          onMoveGroup={moveGroup}
+          onEditGroup={updateGroup}
+          onDeleteGroup={deleteGroup}
           onClose={() => setShowBookmarkManager(false)}
         />
       </Modal>
@@ -386,14 +389,21 @@ function BookmarkManager({
   onMoveBookmark,
   onEditBookmark,
   onDeleteBookmark,
+  onMoveGroup,
+  onEditGroup,
+  onDeleteGroup,
   onClose,
 }: {
   groups: BookmarkGroupType[]
   onMoveBookmark: (fromGroupId: string, toGroupId: string, bookmarkId: string, newIndex?: number) => void
   onEditBookmark: (groupId: string, bookmark: Bookmark) => void
   onDeleteBookmark: (groupId: string, bookmarkId: string) => void
+  onMoveGroup: (groupId: string, newIndex: number | 'up' | 'down') => void
+  onEditGroup: (groupId: string, name: string) => void
+  onDeleteGroup: (groupId: string) => void
   onClose: () => void
 }) {
+  const [activeTab, setActiveTab] = useState<'groups' | 'bookmarks'>('groups')
   const [selectedGroup, setSelectedGroup] = useState<string>(groups[0]?.id || '')
 
   // 获取当前选中分组的书签
@@ -413,14 +423,15 @@ function BookmarkManager({
     const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
     if (newIndex < 0 || newIndex >= bookmarks.length) return
 
-    // 先删除，再插入
-    const bookmark = bookmarks[currentIndex]
-    const newBookmarks = [...bookmarks]
-    newBookmarks.splice(currentIndex, 1)
-    newBookmarks.splice(newIndex, 0, bookmark)
-
-    // 通过 moveBookmark 实现：删除后重新插入
     onMoveBookmark(selectedGroup, selectedGroup, bookmarkId, newIndex)
+  }
+
+  // 编辑分组名称
+  const handleEditGroup = (groupId: string, currentName: string) => {
+    const newName = prompt('请输入新的分组名称:', currentName)
+    if (newName && newName.trim() && newName !== currentName) {
+      onEditGroup(groupId, newName.trim())
+    }
   }
 
   if (groups.length === 0) {
@@ -433,119 +444,220 @@ function BookmarkManager({
 
   return (
     <div className="space-y-4">
-      {/* 分组选择 */}
-      <div className="flex gap-2 flex-wrap">
-        {groups.map((group) => (
-          <button
-            key={group.id}
-            onClick={() => setSelectedGroup(group.id)}
-            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              selectedGroup === group.id
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            {group.name}
-          </button>
-        ))}
+      {/* 标签页切换 */}
+      <div className="flex gap-2 border-b pb-2">
+        <button
+          onClick={() => setActiveTab('groups')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            activeTab === 'groups'
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:bg-muted'
+          }`}
+        >
+          分组管理
+        </button>
+        <button
+          onClick={() => setActiveTab('bookmarks')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            activeTab === 'bookmarks'
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:bg-muted'
+          }`}
+        >
+          书签管理
+        </button>
       </div>
 
-      {/* 书签列表 */}
-      <div className="border rounded-lg overflow-hidden">
-        {bookmarks.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            该分组暂无书签
+      {/* 分组管理 */}
+      {activeTab === 'groups' && (
+        <div className="space-y-3">
+          <div className="border rounded-lg overflow-hidden">
+            <div className="divide-y">
+              {groups.map((group, index) => (
+                <div key={group.id} className="flex items-center gap-2 p-3 hover:bg-muted/50">
+                  {/* 序号和手柄 */}
+                  <div className="flex flex-col items-center gap-1 w-8">
+                    <span className="text-xs text-muted-foreground">{index + 1}</span>
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  </div>
+
+                  {/* 分组名称 */}
+                  <div className="flex-1 min-w-0 font-medium">
+                    {group.name}
+                    <span className="ml-2 text-xs text-muted-foreground">({group.bookmarks.length})</span>
+                  </div>
+
+                  {/* 操作按钮 */}
+                  <div className="flex items-center gap-1">
+                    {/* 上移 */}
+                    {index > 0 && (
+                      <button
+                        onClick={() => onMoveGroup(group.id, 'up')}
+                        className="p-1.5 hover:bg-muted rounded"
+                        title="上移"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    {/* 下移 */}
+                    {index < groups.length - 1 && (
+                      <button
+                        onClick={() => onMoveGroup(group.id, 'down')}
+                        className="p-1.5 hover:bg-muted rounded"
+                        title="下移"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    {/* 编辑 */}
+                    <button
+                      onClick={() => handleEditGroup(group.id, group.name)}
+                      className="p-1.5 hover:bg-muted rounded text-blue-600"
+                      title="重命名"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+
+                    {/* 删除 */}
+                    <button
+                      onClick={() => {
+                        if (confirm(`确定要删除分组 "${group.name}" 吗？\n分组内的所有书签也将被删除。`)) {
+                          onDeleteGroup(group.id)
+                        }
+                      }}
+                      className="p-1.5 hover:bg-muted rounded text-destructive"
+                      title="删除"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="divide-y">
-            {bookmarks.map((bookmark, index) => (
-              <div key={bookmark.id} className="flex items-center gap-2 p-3 hover:bg-muted/50">
-                {/* 拖拽手柄和序号 */}
-                <div className="flex flex-col items-center gap-1 w-8">
-                  <span className="text-xs text-muted-foreground">{index + 1}</span>
-                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                </div>
+        </div>
+      )}
 
-                {/* 书签信息 */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{bookmark.title}</div>
-                  <div className="text-xs text-muted-foreground truncate">{bookmark.url}</div>
-                </div>
-
-                {/* 操作按钮 */}
-                <div className="flex items-center gap-1">
-                  {/* 上移 */}
-                  {index > 0 && (
-                    <button
-                      onClick={() => moveBookmarkOrder(bookmark.id, 'up')}
-                      className="p-1.5 hover:bg-muted rounded"
-                      title="上移"
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                    </button>
-                  )}
-
-                  {/* 下移 */}
-                  {index < bookmarks.length - 1 && (
-                    <button
-                      onClick={() => moveBookmarkOrder(bookmark.id, 'down')}
-                      className="p-1.5 hover:bg-muted rounded"
-                      title="下移"
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                    </button>
-                  )}
-
-                  {/* 移动到其他分组 */}
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        // 移动到目标分组的末尾
-                        moveToGroup(bookmark.id, e.target.value, groups.find(g => g.id === e.target.value)?.bookmarks.length || 0)
-                        // 重置选择
-                        e.target.value = ''
-                      }
-                    }}
-                    className="text-xs p-1.5 border rounded bg-background"
-                    defaultValue=""
-                  >
-                    <option value="">移动到...</option>
-                    {groups
-                      .filter(g => g.id !== selectedGroup)
-                      .map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
-                      ))}
-                  </select>
-
-                  {/* 编辑 */}
-                  <button
-                    onClick={() => onEditBookmark(selectedGroup, bookmark)}
-                    className="p-1.5 hover:bg-muted rounded text-blue-600"
-                    title="编辑"
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-
-                  {/* 删除 */}
-                  <button
-                    onClick={() => {
-                      if (confirm(`确定要删除书签 "${bookmark.title}" 吗？`)) {
-                        onDeleteBookmark(selectedGroup, bookmark.id)
-                      }
-                    }}
-                    className="p-1.5 hover:bg-muted rounded text-destructive"
-                    title="删除"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+      {/* 书签管理 */}
+      {activeTab === 'bookmarks' && (
+        <div className="space-y-3">
+          {/* 分组选择 */}
+          <div className="flex gap-2 flex-wrap">
+            {groups.map((group) => (
+              <button
+                key={group.id}
+                onClick={() => setSelectedGroup(group.id)}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  selectedGroup === group.id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                {group.name}
+              </button>
             ))}
           </div>
-        )}
-      </div>
+
+          {/* 书签列表 */}
+          <div className="border rounded-lg overflow-hidden">
+            {bookmarks.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                该分组暂无书签
+              </div>
+            ) : (
+              <div className="divide-y">
+                {bookmarks.map((bookmark, index) => (
+                  <div key={bookmark.id} className="flex items-center gap-2 p-3 hover:bg-muted/50">
+                    {/* 拖拽手柄和序号 */}
+                    <div className="flex flex-col items-center gap-1 w-8">
+                      <span className="text-xs text-muted-foreground">{index + 1}</span>
+                      <GripVertical className="h-4 w-4 text-muted-foreground" />
+                    </div>
+
+                    {/* 书签信息 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{bookmark.title}</div>
+                      <div className="text-xs text-muted-foreground truncate">{bookmark.url}</div>
+                    </div>
+
+                    {/* 操作按钮 */}
+                    <div className="flex items-center gap-1">
+                      {/* 上移 */}
+                      {index > 0 && (
+                        <button
+                          onClick={() => moveBookmarkOrder(bookmark.id, 'up')}
+                          className="p-1.5 hover:bg-muted rounded"
+                          title="上移"
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </button>
+                      )}
+
+                      {/* 下移 */}
+                      {index < bookmarks.length - 1 && (
+                        <button
+                          onClick={() => moveBookmarkOrder(bookmark.id, 'down')}
+                          className="p-1.5 hover:bg-muted rounded"
+                          title="下移"
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </button>
+                      )}
+
+                      {/* 移动到其他分组 */}
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            moveToGroup(bookmark.id, e.target.value, groups.find(g => g.id === e.target.value)?.bookmarks.length || 0)
+                            e.target.value = ''
+                          }
+                        }}
+                        className="text-xs p-1.5 border rounded bg-background"
+                        defaultValue=""
+                      >
+                        <option value="">移动到...</option>
+                        {groups
+                          .filter(g => g.id !== selectedGroup)
+                          .map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                          ))}
+                      </select>
+
+                      {/* 编辑 */}
+                      <button
+                        onClick={() => onEditBookmark(selectedGroup, bookmark)}
+                        className="p-1.5 hover:bg-muted rounded text-blue-600"
+                        title="编辑"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+
+                      {/* 删除 */}
+                      <button
+                        onClick={() => {
+                          if (confirm(`确定要删除书签 "${bookmark.title}" 吗？`)) {
+                            onDeleteBookmark(selectedGroup, bookmark.id)
+                          }
+                        }}
+                        className="p-1.5 hover:bg-muted rounded text-destructive"
+                        title="删除"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 底部按钮 */}
       <div className="flex justify-end gap-2">
