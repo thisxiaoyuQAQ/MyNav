@@ -34,12 +34,23 @@ interface AppProviderProps {
 
 export function AppProvider({ children, initialConfig }: AppProviderProps) {
   const [config, setConfig] = React.useState<AppConfig>(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('my-nav-config') : null
+    if (typeof window === 'undefined') {
+      return initialConfig || DEFAULT_CONFIG
+    }
+
+    const saved = localStorage.getItem('my-nav-config')
     if (saved) {
+      // Safety check: if saved data is too large, don't even try to parse it
+      if (saved.length > 5000000) {
+        console.warn('Saved config is too large, clearing it.')
+        localStorage.removeItem('my-nav-config')
+        return initialConfig || DEFAULT_CONFIG
+      }
       try {
         const parsed = JSON.parse(saved)
         return { ...DEFAULT_CONFIG, ...parsed }
       } catch {
+        localStorage.removeItem('my-nav-config')
         return initialConfig || DEFAULT_CONFIG
       }
     }
@@ -48,7 +59,22 @@ export function AppProvider({ children, initialConfig }: AppProviderProps) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('my-nav-config', JSON.stringify(config))
+      try {
+        const configString = JSON.stringify(config)
+        // Check if the data is too large before attempting to save
+        if (configString.length > 4500000) { // ~4.5MB, leaving buffer for 5MB limit
+          console.warn('Config too large for localStorage, skipping save. Consider reducing icon sizes or notes.')
+          return
+        }
+        localStorage.setItem('my-nav-config', configString)
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+          console.error('localStorage quota exceeded. Config not saved.')
+          // Optionally notify user here
+        } else {
+          console.error('Failed to save config:', error)
+        }
+      }
     }
   }, [config])
 

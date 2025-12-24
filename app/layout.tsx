@@ -35,21 +35,30 @@ function ThemeHandler() {
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { config } = useAppContext()
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Use default config values for SSR to avoid hydration mismatch
+  const backgroundImage = mounted ? config.backgroundImage : undefined
 
   return (
     <main
       className="min-h-screen relative"
       style={{
-        backgroundImage: config.backgroundImage ? `url(${config.backgroundImage})` : undefined,
-        backgroundSize: config.backgroundImage ? 'cover' : undefined,
-        backgroundPosition: config.backgroundImage ? 'center' : undefined,
-        backgroundAttachment: config.backgroundImage ? 'fixed' : undefined,
+        backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+        backgroundSize: backgroundImage ? 'cover' : undefined,
+        backgroundPosition: backgroundImage ? 'center' : undefined,
+        backgroundAttachment: backgroundImage ? 'fixed' : undefined,
       }}
+      suppressHydrationWarning
     >
-      {!config.backgroundImage && (
+      {!backgroundImage && (
         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black -z-10" />
       )}
-      {config.backgroundImage && (
+      {backgroundImage && (
         <div className="absolute inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-sm -z-10" />
       )}
       <div className="relative">

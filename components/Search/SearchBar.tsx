@@ -115,7 +115,9 @@ export function SearchBar({
               <span className="text-lg" suppressHydrationWarning>
                 {mounted ? currentEngine.icon : DEFAULT_SEARCH_ENGINES[0].icon}
               </span>
-              <span className="hidden sm:inline">{currentEngine.name}</span>
+              <span className="hidden sm:inline" suppressHydrationWarning>
+                {mounted ? currentEngine.name : DEFAULT_SEARCH_ENGINES[0].name}
+              </span>
               <ChevronDown className={`h-4 w-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
             </button>
           </div>

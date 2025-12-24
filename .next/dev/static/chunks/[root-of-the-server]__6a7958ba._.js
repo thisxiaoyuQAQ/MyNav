@@ -224,8 +224,16 @@ function AppProvider({ children, initialConfig }) {
     _s1();
     const [config, setConfig] = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useState({
         "AppProvider.useState": ()=>{
-            const saved = ("TURBOPACK compile-time truthy", 1) ? localStorage.getItem('my-nav-config') : "TURBOPACK unreachable";
+            if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
+            ;
+            const saved = localStorage.getItem('my-nav-config');
             if (saved) {
+                // Safety check: if saved data is too large, don't even try to parse it
+                if (saved.length > 5000000) {
+                    console.warn('Saved config is too large, clearing it.');
+                    localStorage.removeItem('my-nav-config');
+                    return initialConfig || DEFAULT_CONFIG;
+                }
                 try {
                     const parsed = JSON.parse(saved);
                     return {
@@ -233,6 +241,7 @@ function AppProvider({ children, initialConfig }) {
                         ...parsed
                     };
                 } catch  {
+                    localStorage.removeItem('my-nav-config');
                     return initialConfig || DEFAULT_CONFIG;
                 }
             }
@@ -242,7 +251,22 @@ function AppProvider({ children, initialConfig }) {
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "AppProvider.useEffect": ()=>{
             if ("TURBOPACK compile-time truthy", 1) {
-                localStorage.setItem('my-nav-config', JSON.stringify(config));
+                try {
+                    const configString = JSON.stringify(config);
+                    // Check if the data is too large before attempting to save
+                    if (configString.length > 4500000) {
+                        console.warn('Config too large for localStorage, skipping save. Consider reducing icon sizes or notes.');
+                        return;
+                    }
+                    localStorage.setItem('my-nav-config', configString);
+                } catch (error) {
+                    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+                        console.error('localStorage quota exceeded. Config not saved.');
+                    // Optionally notify user here
+                    } else {
+                        console.error('Failed to save config:', error);
+                    }
+                }
             }
         }
     }["AppProvider.useEffect"], [
@@ -454,11 +478,11 @@ function AppProvider({ children, initialConfig }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/app/context/AppContext.tsx",
-        lineNumber: 241,
+        lineNumber: 267,
         columnNumber: 10
     }, this);
 }
-_s1(AppProvider, "72l6ZBCD48egCcCvCXZEXLV57KA=");
+_s1(AppProvider, "Rtzyjp35etZl0UTpUn/LGh0okZY=");
 _c = AppProvider;
 var _c;
 __turbopack_context__.k.register(_c, "AppProvider");
@@ -725,27 +749,36 @@ _c = ThemeHandler;
 function LayoutContent({ children }) {
     _s1();
     const { config } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AppContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAppContext"])();
+    const [mounted, setMounted] = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useState(false);
+    __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useEffect({
+        "LayoutContent.useEffect": ()=>{
+            setMounted(true);
+        }
+    }["LayoutContent.useEffect"], []);
+    // Use default config values for SSR to avoid hydration mismatch
+    const backgroundImage = mounted ? config.backgroundImage : undefined;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
         className: "min-h-screen relative",
         style: {
-            backgroundImage: config.backgroundImage ? `url(${config.backgroundImage})` : undefined,
-            backgroundSize: config.backgroundImage ? 'cover' : undefined,
-            backgroundPosition: config.backgroundImage ? 'center' : undefined,
-            backgroundAttachment: config.backgroundImage ? 'fixed' : undefined
+            backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+            backgroundSize: backgroundImage ? 'cover' : undefined,
+            backgroundPosition: backgroundImage ? 'center' : undefined,
+            backgroundAttachment: backgroundImage ? 'fixed' : undefined
         },
+        suppressHydrationWarning: true,
         children: [
-            !config.backgroundImage && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            !backgroundImage && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-black -z-10"
             }, void 0, false, {
                 fileName: "[project]/app/layout.tsx",
-                lineNumber: 50,
+                lineNumber: 59,
                 columnNumber: 9
             }, this),
-            config.backgroundImage && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            backgroundImage && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "absolute inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-sm -z-10"
             }, void 0, false, {
                 fileName: "[project]/app/layout.tsx",
-                lineNumber: 53,
+                lineNumber: 62,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -753,17 +786,17 @@ function LayoutContent({ children }) {
                 children: children
             }, void 0, false, {
                 fileName: "[project]/app/layout.tsx",
-                lineNumber: 55,
+                lineNumber: 64,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/layout.tsx",
-        lineNumber: 40,
+        lineNumber: 48,
         columnNumber: 5
     }, this);
 }
-_s1(LayoutContent, "wsKt0q2mp+fbW0y1MfuFIpTbE2U=", false, function() {
+_s1(LayoutContent, "3L1joyg0ZLbdYF9hGf0YBUQ0HUY=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AppContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAppContext"]
     ];
@@ -780,12 +813,12 @@ function RootLayout({ children }) {
                     content: "A beautiful and lightweight personal browser navigation page"
                 }, void 0, false, {
                     fileName: "[project]/app/layout.tsx",
-                    lineNumber: 70,
+                    lineNumber: 79,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/layout.tsx",
-                lineNumber: 69,
+                lineNumber: 78,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("body", {
@@ -794,31 +827,31 @@ function RootLayout({ children }) {
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ThemeHandler, {}, void 0, false, {
                             fileName: "[project]/app/layout.tsx",
-                            lineNumber: 74,
+                            lineNumber: 83,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(LayoutContent, {
                             children: children
                         }, void 0, false, {
                             fileName: "[project]/app/layout.tsx",
-                            lineNumber: 75,
+                            lineNumber: 84,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/layout.tsx",
-                    lineNumber: 73,
+                    lineNumber: 82,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/layout.tsx",
-                lineNumber: 72,
+                lineNumber: 81,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/layout.tsx",
-        lineNumber: 68,
+        lineNumber: 77,
         columnNumber: 5
     }, this);
 }
