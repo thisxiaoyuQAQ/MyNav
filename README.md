@@ -351,7 +351,7 @@ colors: {
 
 <div align="center">
 
-**Made with ❤️ by [Your Name]**
+**Made with ❤️ by [ Zhi Yu ]**
 
 [![Star on GitHub](https://img.shields.io/github/stars/thisxiaoyuQAQ/MyNav?style=social)](https://github.com/thisxiaoyuQAQ/MyNav)
 
